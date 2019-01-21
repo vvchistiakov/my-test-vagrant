@@ -1,0 +1,63 @@
+---
+- hosts: all
+  become: yes
+  user: vagrant
+  vars:
+    timezone: UTC
+  tasks:
+    - name: yum update
+      yum: name=* state=latest
+
+    - name: Set timezone to {{ timezone }}
+      timezone:
+        name: "{{ timezone }}"
+
+    - name: Selinux set permissive mode
+      selinux:
+        policy: targeted
+        state: permissive
+
+    - name: Update CA certs
+      shell: |
+        update-ca-trust enable
+        update-ca-trust extract
+
+    - name: Add Docker repository
+      get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/
+    
+    - name: Update Yum cache
+      yum:
+        update_cache: yes
+
+    - name: Install packages
+      yum:
+        name:
+          - epel-release
+          - unzip
+          - zip
+          - java-1.8.0-openjdk-devel
+          #- maven
+          - git
+          - docker-ce
+          #- docker-compose
+    
+    - name: Install Docker Compose
+      get_url:
+        url:  https://github.com/docker/compose/releases/download/1.23.2/docker-compose-Linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: 0777
+    
+    - name: Create symlink for Docker Compose
+      file:
+        src: /usr/local/bin/docker-compose
+        path: /usr/bin/docker-compose
+        state: link
+        mode: 0777
+    
+    - name: Start Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes 
